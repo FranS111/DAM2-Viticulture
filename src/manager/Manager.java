@@ -108,7 +108,7 @@ public class Manager {
 	    tx = session.beginTransaction();
 	    int id = (Integer) session.save(c);
 	    c = session.get(Campo.class, id);
-	    campos.add(c); // Store the Campo instance in the list
+	    campos.add(c); // Store the Campo instance in the list 
 	    tx.commit();
 	}
 
