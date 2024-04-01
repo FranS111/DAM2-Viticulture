@@ -20,12 +20,15 @@ public class Vid {
 	private TipoVid vid;
 	@Column(name = "cantidad", nullable = true)
 	private int cantidad;
+	@Column(name = "precio", nullable = true)
+	private double precio;
 	
 	public Vid() {}
 		
-	public Vid(TipoVid vid, int cantidad) {
+	public Vid(TipoVid vid, int cantidad, double precio) {
 		this.vid = vid;
 		this.cantidad = cantidad;
+		this.precio = 0f;
 	}
 	public int getId() {
 		return this.id;
@@ -36,8 +39,11 @@ public class Vid {
 	public int getCantidad() {
 		return cantidad;
 	}
+	public double getPrecio() {
+		return precio;
+	}
 	@Override
 	public String toString() {
-		return "Vid [vid=" + (vid.equals("0") ? "blanca" : "negra")  + ", cantidad=" + cantidad + "]";
-	}
+        return "Vid [vid=" + vid + ", cantidad=" + cantidad + ", precio=" + precio + "]";
+    }
 }

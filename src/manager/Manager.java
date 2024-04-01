@@ -91,7 +91,8 @@ public class Manager {
 	        System.out.println("No Campo object associated. Cannot add Vid.");
 	        return;
 	    }
-	    Vid v = new Vid(TipoVid.valueOf(split[1].toUpperCase()), Integer.parseInt(split[2]));
+	    	    
+	    Vid v = new Vid(TipoVid.valueOf(split[1].toUpperCase()), Integer.parseInt(split[2]), 0f);
 	    tx = session.beginTransaction();
 	    session.save(v);
 	    
