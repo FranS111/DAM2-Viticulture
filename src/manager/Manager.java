@@ -44,6 +44,7 @@ public class Manager {
 		getEntrada();
 		manageActions();
 		showAllCampos();
+		showTotalPrice();
 		session.close();
 	}
 
@@ -77,13 +78,12 @@ public class Manager {
 	}
 
 	private void vendimia() {
-	    for (Campo campo : campos) {
-	        b.getVids().addAll(campo.getVids()); // Aggregate all vids from each Campo to the Bodega's vids
-	        
-	        tx = session.beginTransaction();
-	        session.save(b);
-	        tx.commit();
-	    }
+		this.b.getVids().addAll(this.c.getVids());
+		
+		tx = session.beginTransaction();
+		session.save(b);
+		
+		tx.commit();
 	}
 
 	private void addVid(String[] split) {
@@ -92,7 +92,7 @@ public class Manager {
 	        return;
 	    }
 	    	    
-	    Vid v = new Vid(TipoVid.valueOf(split[1].toUpperCase()), Integer.parseInt(split[2]), 0f);
+	    Vid v = new Vid(TipoVid.valueOf(split[1].toUpperCase()), Integer.parseInt(split[2]), 1f);
 	    tx = session.beginTransaction();
 	    session.save(v);
 	    
@@ -101,16 +101,15 @@ public class Manager {
 	    
 	    tx.commit();
 	}
-	
-	private List<Campo> campos = new ArrayList<>();
-	
+		
 	private void addCampo(String[] split) {
-	    Campo c = new Campo(b);
-	    tx = session.beginTransaction();
-	    int id = (Integer) session.save(c);
-	    c = session.get(Campo.class, id);
-	    campos.add(c); // Store the Campo instance in the list 
-	    tx.commit();
+		c = new Campo(b);
+		tx = session.beginTransaction();
+		
+		int id = (Integer) session.save(c);
+		c = session.get(Campo.class, id);
+		
+		tx.commit();
 	}
 
 	private void addBodega(String[] split) {
@@ -139,6 +138,30 @@ public class Manager {
 			System.out.println(c);
 		}
 		tx.commit();
+	}
+	
+	private List<Campo> getAllCampos() {
+	    tx = session.beginTransaction();
+	    Query q = session.createQuery("select c from Campo c");
+	    List<Campo> list = q.list();
+	    tx.commit();
+	    return list;
+	}
+	
+	private void showTotalPrice() {
+	    float totalPrice = 0; // Initialize total price
+	    
+	    // Fetch all campos from the database
+	    List<Campo> campos = getAllCampos();
+	    
+	    // Iterate through all campos and their associated vids
+	    for (Campo campo : campos) {
+	        for (Vid vid : campo.getVids()) {
+	            totalPrice += vid.getPrecio(); // Add precio of each vid to total price
+	        }
+	    }
+	    
+	    System.out.println("Total Price: " + totalPrice);
 	}
 
 	

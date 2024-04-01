@@ -28,7 +28,7 @@ public class Vid {
 	public Vid(TipoVid vid, int cantidad, double precio) {
 		this.vid = vid;
 		this.cantidad = cantidad;
-		this.precio = 0f;
+		this.precio = 1f;
 	}
 	public int getId() {
 		return this.id;
