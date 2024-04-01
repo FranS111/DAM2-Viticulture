@@ -77,34 +77,39 @@ public class Manager {
 	}
 
 	private void vendimia() {
-		this.b.getVids().addAll(this.c.getVids());
-		
-		tx = session.beginTransaction();
-		session.save(b);
-		
-		tx.commit();
+	    for (Campo campo : campos) {
+	        b.getVids().addAll(campo.getVids()); // Aggregate all vids from each Campo to the Bodega's vids
+	        
+	        tx = session.beginTransaction();
+	        session.save(b);
+	        tx.commit();
+	    }
 	}
 
 	private void addVid(String[] split) {
-		Vid v = new Vid(TipoVid.valueOf(split[1].toUpperCase()), Integer.parseInt(split[2]));
-		tx = session.beginTransaction();
-		session.save(v);
-		
-		c.addVid(v);
-		session.save(c);
-		
-		tx.commit();
-		
+	    if (c == null) {
+	        System.out.println("No Campo object associated. Cannot add Vid.");
+	        return;
+	    }
+	    Vid v = new Vid(TipoVid.valueOf(split[1].toUpperCase()), Integer.parseInt(split[2]));
+	    tx = session.beginTransaction();
+	    session.save(v);
+	    
+	    c.addVid(v);
+	    session.save(c);
+	    
+	    tx.commit();
 	}
-
+	
+	private List<Campo> campos = new ArrayList<>();
+	
 	private void addCampo(String[] split) {
-		c = new Campo(b);
-		tx = session.beginTransaction();
-		
-		int id = (Integer) session.save(c);
-		c = session.get(Campo.class, id);
-		
-		tx.commit();
+	    Campo c = new Campo(b);
+	    tx = session.beginTransaction();
+	    int id = (Integer) session.save(c);
+	    c = session.get(Campo.class, id);
+	    campos.add(c); // Store the Campo instance in the list
+	    tx.commit();
 	}
 
 	private void addBodega(String[] split) {
