@@ -10,6 +10,11 @@ create table Entrada (
 );
 
 insert into Entrada (instruccion) values ('B Bodega1');
+insert into Entrada (instruccion) values ('B Bodega1');
+insert into Entrada (instruccion) values ('B Bodega1');
+insert into Entrada (instruccion) values ('B Bodega1');
+
+insert into Entrada (instruccion) values ('B Bodega1');
 insert into Entrada (instruccion) values ('C');
 insert into Entrada (instruccion) values ('V BLANCA 3');
 insert into Entrada (instruccion) values ('V NEGRA 2');
