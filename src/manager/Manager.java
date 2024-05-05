@@ -1,168 +1,188 @@
 package manager;
+
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.MongoCollection;
+import org.bson.Document;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-
-
-import org.hibernate.HibernateException;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
-import org.hibernate.cfg.Configuration;
-import org.hibernate.query.Query;
-
-import model.Bodega;
-import model.Campo;
-import model.Entrada;
-import model.Vid;
-import utils.TipoVid;
+import java.util.Map;
 
 public class Manager {
-	private static Manager manager;
-	private ArrayList<Entrada> entradas;
-	private Session session;
-	private Transaction tx;
-	private Bodega b;
-	private Campo c;
+    // Singleton instance for Manager class
+    private static Manager manager;
+    
+    // List to store input documents
+    private ArrayList<Document> entradas;
+    
+    // MongoDB client, database, and collections
+    private MongoClient mongoClient;
+    private MongoDatabase database;
+    private MongoCollection<Document> collection;
+    
+    // Documents for managing data operations
+    private Document b; // Used for bodega operations
+    private Document c; // Used for campo operations
+    
+    // Maps for storing relationships between documents
+    private Map<Document, List<Document>> bodegaVidsMap; // Maps bodegas to their associated vids
+    private List<Document> camposRecolectados; // List of campos that have been collected
+    
+    // Private constructor for singleton pattern
+    private Manager() {
+        this.entradas = new ArrayList<>();
+        this.bodegaVidsMap = new HashMap<>();
+        this.camposRecolectados = new ArrayList<>();
+    }
+    
+    // Singleton instance getter
+    public static Manager getInstance() {
+        if (manager == null) {
+            manager = new Manager();
+        }
+        return manager;
+    }
 
-	private Manager () {
-		this.entradas = new ArrayList<>();
-	}
-	
-	public static Manager getInstance() {
-		if (manager == null) {
-			manager = new Manager();
-		}
-		return manager;
-	}
-	
-	private void createSession() {
-		org.hibernate.SessionFactory sessionFactory = new Configuration().configure().buildSessionFactory();
-    	session = sessionFactory.openSession();
-	}
+    // Method to initialize the Manager instance
+    public void init() {
+        createSession(); // Create MongoDB session
+        getEntrada(); // Retrieve input data
+        manageActions(); // Manage actions based on input data
+        showAllCampos(); // Display all campos
+        mongoClient.close(); // Close MongoDB client connection
+    }
 
-	public void init() {
-		createSession();
-		getEntrada();
-		manageActions();
-		showAllCampos();
-		showTotalPrice();
-		session.close();
-	}
+    // Method to create MongoDB session
+    private void createSession() {
+        mongoClient = MongoClients.create("mongodb://localhost:27017");
+        database = mongoClient.getDatabase("dam2tm06uf2p2");
+    }
 
-	private void manageActions() {
-		for (Entrada entrada : this.entradas) {
-			try {
-				System.out.println(entrada.getInstruccion());
-				switch (entrada.getInstruccion().toUpperCase().split(" ")[0]) {
-					case "B":
-						addBodega(entrada.getInstruccion().split(" "));
-						break;
-					case "C":
-						addCampo(entrada.getInstruccion().split(" "));
-						break;
-					case "V":
-						addVid(entrada.getInstruccion().split(" "));
-						break;
-					case "#":
-						vendimia();
-						break;
-					default:
-						System.out.println("Instruccion incorrecta");
-				}
-			} catch (HibernateException e) {
-				e.printStackTrace();
-				if (tx != null) {
-					tx.rollback();
-				}
-			}
-		}
-	}
+    // Method to manage actions based on input data
+    private void manageActions() {
+        for (Document entrada : this.entradas) {
+            // Extract instruction from entrada document
+            String instruccion = entrada.getString("instruccion").replace("'", "").trim();
+            System.out.println(instruccion); // Print the instruction
+            
+            // Split the instruction into parts
+            String[] split = instruccion.toUpperCase().split(" ");
 
-	private void vendimia() {
-		this.b.getVids().addAll(this.c.getVids());
-		
-		tx = session.beginTransaction();
-		session.save(b);
-		
-		tx.commit();
-	}
+            // Perform action based on the first part of the instruction
+            switch (split[0]) {
+                case "B":
+                    addBodega(split); // Add a new bodega
+                    break;
+                case "C":
+                    addCampo(split); // Add a new campo
+                    break;
+                case "V":
+                    addVid(split); // Add a new vid
+                    break;
+                case "#":
+                    vendimia(); // Perform vendimia action
+                    break;
+                default:
+                    System.out.println("Instruccion incorrecta"); // Invalid instruction
+            }
+        }
+    }
 
-	private void addVid(String[] split) {
-	    if (c == null) {
-	        System.out.println("No Campo object associated. Cannot add Vid.");
-	        return;
-	    }
-	    	    
-	    Vid v = new Vid(TipoVid.valueOf(split[1].toUpperCase()), Integer.parseInt(split[2]), 1f);
-	    tx = session.beginTransaction();
-	    session.save(v);
-	    
-	    c.addVid(v);
-	    session.save(c);
-	    
-	    tx.commit();
-	}
-		
-	private void addCampo(String[] split) {
-		c = new Campo(b);
-		tx = session.beginTransaction();
-		
-		int id = (Integer) session.save(c);
-		c = session.get(Campo.class, id);
-		
-		tx.commit();
-	}
+    // Method to add a new vid
+    private void addVid(String[] split) {
+        // Create a new vid document
+        Document v = new Document();
+        v.put("tipo", split[1].toUpperCase());
+        v.put("cantidad", Integer.parseInt(split[2]));
+        v.put("bodega", b.get("_id")); 
+        v.put("campo", c.get("_id")); 
 
-	private void addBodega(String[] split) {
-		b = new Bodega(split[1]);
-		tx = session.beginTransaction();
-		
-		int id = (Integer) session.save(b);
-		b = session.get(Bodega.class, id);
-		
-		tx.commit();
-		
-	}
+        // Insert the vid document into the Vid collection
+        collection = database.getCollection("Vid");
+        collection.insertOne(v);
 
-	private void getEntrada() {
-		tx = session.beginTransaction();
-		Query q = session.createQuery("select e from Entrada e");
-		this.entradas.addAll(q.list());
-		tx.commit();
-	}
+        // Update the campo document with the new vid
+        List<Document> vids = (List<Document>) c.get("vids");
+        if (vids == null) {
+            vids = new ArrayList<>();
+        }
+        vids.add(v);
+        c.put("vids", vids);
 
-	private void showAllCampos() {
-		tx = session.beginTransaction();
-		Query q = session.createQuery("select c from Campo c");
-		List<Campo> list = q.list();
-		for (Campo c : list) {
-			System.out.println(c);
-		}
-		tx.commit();
-	}
-	
-	private List<Campo> getAllCampos() {
-	    tx = session.beginTransaction();
-	    Query q = session.createQuery("select c from Campo c");
-	    List<Campo> list = q.list();
-	    tx.commit();
-	    return list;
-	}
-	
-	private void showTotalPrice() {
-	    float totalPrice = 0; // Initialize total price
-	    
-	    // Fetch all campos from the database
-	    List<Campo> campos = getAllCampos();
-	    
-	    // Iterate through all campos and their associated vids
-	    for (Campo campo : campos) {
-	        for (Vid vid : campo.getVids()) {
-	            totalPrice += vid.getPrecio(); // Add precio of each vid to total price
-	        }
-	    }
-	    
-	    System.out.println("Total Price: " + totalPrice);
-	}
+        // Update the Vid collection with the new vid
+        Document updateQuery = new Document();
+        updateQuery.append("$set", new Document().append("vids", vids));
+        collection.updateOne(new Document("_id", c.get("_id")), updateQuery);
 
-	
+        // Update the bodegaVidsMap with the new vid
+        List<Document> bodegaVids = bodegaVidsMap.getOrDefault(b, new ArrayList<>());
+        bodegaVids.add(v);
+        bodegaVidsMap.put(b, bodegaVids);
+    }
+
+    // Method to perform vendimia action
+    private void vendimia() {
+        // Update each bodega document with its associated vids
+        for (Map.Entry<Document, List<Document>> entry : bodegaVidsMap.entrySet()) {
+            Document bodega = entry.getKey();
+            List<Document> vids = entry.getValue();
+            bodega.put("vids", vids);
+        }
+        
+        // Mark campos as recolectado if they contain vids
+        for (Document campo : camposRecolectados) {
+            if (campo.containsKey("vids")) {
+                campo.put("recolectado", true);
+                collection = database.getCollection("Campo");
+                Document updateQuery = new Document();
+                updateQuery.append("$set", new Document().append("recolectado", true));
+                collection.updateOne(new Document("_id", campo.get("_id")), updateQuery);
+            }
+        }
+        
+        // Clear the bodegaVidsMap after vendimia
+        bodegaVidsMap.clear();
+    }
+
+    // Method to add a new campo
+    private void addCampo(String[] split) {
+        c = new Document();
+        c.put("bodega", b.get("_id"));
+        
+        // Insert the campo document into the Campo collection
+        collection = database.getCollection("Campo");
+        collection.insertOne(c);
+        
+        // Add the campo to the list of camposRecolectados
+        camposRecolectados.add(c);
+    }
+
+    // Method to add a new bodega
+    private void addBodega(String[] split) {
+        b = new Document();
+        b.put("nombre", split[1]);
+        
+        // Insert the bodega document into the Bodega collection
+        collection = database.getCollection("Bodega");
+        collection.insertOne(b);
+    }
+
+    // Method to retrieve input data
+    private void getEntrada() {
+        collection = database.getCollection("Entrada");
+        for (Document doc : collection.find()) {
+            this.entradas.add(doc);
+        }
+    }
+
+    // Method to display all campos
+    private void showAllCampos() {
+        collection = database.getCollection("Campo");
+        for (Document doc : collection.find()) {
+            System.out.println(doc.toJson());
+        }
+    }
 }
