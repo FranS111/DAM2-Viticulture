@@ -1,7 +1,3 @@
-
-##  Overview
-This project provides a management system for operations involving bodegas (warehouses), campos (fields), and vids (vines). It is built using Java with MongoDB as the database for storing and manipulating hierarchical data. The system supports the creation of bodegas, campos, and vids, and includes functionality for performing a vendimia (harvest).
-
 ##  Core Features
 
 ###  Initialization and Configuration
